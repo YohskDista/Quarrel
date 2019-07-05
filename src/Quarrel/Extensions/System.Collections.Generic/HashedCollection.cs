@@ -43,7 +43,7 @@ namespace System.Collections.ObjectModel
 
         public Dictionary<TKey, TValue>.KeyCollection Keys => new Dictionary<TKey, TValue>.KeyCollection(_dict);
 
-        public Dictionary<TKey, TValue>.ValueCollection Values => new Dictionary<TKey, TValue>.ValueCollection(_dict);
+        public ICollection<TValue> Values => _collect.Select(x => x.Value).ToList();
 
         #endregion
 
