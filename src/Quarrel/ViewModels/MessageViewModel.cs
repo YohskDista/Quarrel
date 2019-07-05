@@ -16,6 +16,7 @@ using Quarrel.Messages.Gateway;
 using Quarrel.Messages.Posts.Requests;
 using Quarrel.Services;
 using Windows.Web.Syndication;
+using Microsoft.Toolkit.Uwp.UI.Controls.TextToolbarSymbols;
 
 namespace Quarrel.ViewModels
 {
@@ -43,11 +44,11 @@ namespace Quarrel.ViewModels
 
                         Message lastItem = null;
 
-                        BindableMessage scrollItem = null;
+                        KeyValuePair<string, BindableMessage>? scrollItem = null;
 
                         foreach (Message item in itemList.Reverse())
                         {
-                            Source.Add(new BindableMessage(item, guildId, lastItem, lastItem != null && m.Channel.ReadState != null && lastItem.Id == m.Channel.ReadState.LastMessageId));
+                            Source.Add(item.Id, new BindableMessage(item, guildId, lastItem, lastItem != null && m.Channel.ReadState != null && lastItem.Id == m.Channel.ReadState.LastMessageId));
 
                             if (lastItem != null && m.Channel.ReadState != null && lastItem.Id == m.Channel.ReadState.LastMessageId)
                             {
@@ -57,8 +58,8 @@ namespace Quarrel.ViewModels
                             lastItem = item;
                         }
 
-                        if (scrollItem != null)
-                            ScrollTo?.Invoke(this, scrollItem);
+                        if (scrollItem.HasValue)
+                            ScrollTo?.Invoke(this, scrollItem.Value);
                         else
                             ScrollTo?.Invoke(this, Source.LastOrDefault());
                     });
@@ -71,7 +72,7 @@ namespace Quarrel.ViewModels
                 if (Channel != null && Channel.Model.Id == m.Message.ChannelId)
                     await DispatcherHelper.RunAsync(() =>
                     {
-                        Source.Add(new BindableMessage(m.Message, guildId, Source.LastOrDefault().Model));
+                        Source.Add(m.Message.Id, new BindableMessage(m.Message, guildId, Source.LastOrDefault().Value.Model));
                     });
             });
 
@@ -81,12 +82,7 @@ namespace Quarrel.ViewModels
                 {
                     await DispatcherHelper.RunAsync(() =>
                     {
-                        // LastOrDefault to start from the bottom
-                        var msg = Source.LastOrDefault(x => x.Model.Id == m.MessageId);
-                        if (msg != null)
-                        {
-                            Source.Remove(msg);
-                        }
+                        Source.Remove(m.MessageId);
                     });
                 }
             });
@@ -97,18 +93,16 @@ namespace Quarrel.ViewModels
                 {
                     await DispatcherHelper.RunAsync(() =>
                     {
-                        // LastOrDefault to start from the bottom
-                        var msg = Source.LastOrDefault(x => x.Model.Id == m.Message.Id);
-                        if (msg != null)
+                        if (Source.ContainsKey(m.Message.Id))
                         {
-                            msg.Update(m.Message);
+                            Source[m.Message.Id].Update(m.Message);
                         }
                     });
                 }
             });
         }
 
-        public event EventHandler<BindableMessage> ScrollTo;
+        public event EventHandler<KeyValuePair<string, BindableMessage>> ScrollTo;
 
         private string guildId
         {
@@ -139,7 +133,7 @@ namespace Quarrel.ViewModels
 
         private bool ItemsLoading => NewItemsLoading || OldItemsLoading;
 
-        public ObservableCollection<BindableMessage> Source { get; private set; } = new ObservableCollection<BindableMessage>();
+        public ObservableHashedCollection<string, BindableMessage> Source { get; private set; } = new ObservableHashedCollection<string, BindableMessage>(new List<KeyValuePair<string, BindableMessage>>());
 
         private RelayCommand sendMessageCommand;
 
@@ -318,7 +312,7 @@ namespace Quarrel.ViewModels
             using (await SourceMutex.LockAsync())
             {
                 OldItemsLoading = true;
-                IEnumerable<Message> itemList = await ServicesManager.Discord.ChannelService.GetChannelMessagesBefore(Channel.Model.Id, Source.FirstOrDefault().Model.Id);
+                IEnumerable<Message> itemList = await ServicesManager.Discord.ChannelService.GetChannelMessagesBefore(Channel.Model.Id, Source.FirstOrDefault().Value.Model.Id);
 
                 await DispatcherHelper.RunAsync(() =>
                 {
@@ -326,7 +320,7 @@ namespace Quarrel.ViewModels
                     foreach (var item in itemList)
                     {
                         // Can't be last read item
-                        Source.Insert(0, new BindableMessage(item, guildId, lastItem));
+                        Source.Insert(0, item.Id, new BindableMessage(item, guildId, lastItem));
                         lastItem = item;
                     }
                 });
@@ -340,9 +334,9 @@ namespace Quarrel.ViewModels
             using (await SourceMutex.LockAsync())
             {
                 NewItemsLoading = true;
-                if (Channel.Model.LastMessageId != Source.LastOrDefault().Model.Id)
+                if (Source.ContainsKey(Channel.Model.LastMessageId))
                 {
-                    IEnumerable<Message> itemList = await ServicesManager.Discord.ChannelService.GetChannelMessagesAfter(Channel.Model.Id, Source.LastOrDefault().Model.Id);
+                    IEnumerable<Message> itemList = await ServicesManager.Discord.ChannelService.GetChannelMessagesAfter(Channel.Model.Id, Source.LastOrDefault().Value.Model.Id);
 
                     await DispatcherHelper.RunAsync(() =>
                     {
@@ -350,14 +344,14 @@ namespace Quarrel.ViewModels
                         foreach (var item in itemList)
                         {
                             // Can't be last read item
-                            Source.Add(new BindableMessage(item, guildId, lastItem));
+                            Source.Add(item.Id, new BindableMessage(item, guildId, lastItem));
                             lastItem = item;
                         }
                     });
                 }
                 else if (Channel.Model.LastMessageId != Channel.ReadState.LastMessageId)
                 {
-                    await ServicesManager.Discord.ChannelService.AckMessage(Channel.Model.Id, Source.LastOrDefault().Model.Id);
+                    await ServicesManager.Discord.ChannelService.AckMessage(Channel.Model.Id, Source.LastOrDefault().Value.Model.Id);
                 }
                 NewItemsLoading = false;
             }

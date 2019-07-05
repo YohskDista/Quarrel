@@ -65,7 +65,7 @@ namespace Quarrel.Views
             }
         }
 
-        private void ViewModel_ScrollTo(object sender, BindableMessage e)
+        private void ViewModel_ScrollTo(object sender, KeyValuePair<string, BindableMessage> e)
         {
             MessageList.ScrollIntoView(e);
         }

@@ -89,9 +89,9 @@ namespace System.Collections.ObjectModel
         {
             if (_collect is IList<KeyValuePair<TKey, TValue>> list)
             {
-                _dict.Add(item.Key, item.Value);
-                list.Insert(position, item);
-                return true;
+                bool result = _dict.TryAdd(item.Key, item.Value);
+                if (result) list.Insert(position, item);
+                return result;
             }
             return false;
         }

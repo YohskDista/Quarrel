@@ -55,6 +55,13 @@ namespace System.Collections.ObjectModel
             return result;
         }
 
+        private bool TryInsertWithNotification(int position, TKey key, TValue value)
+        {
+            bool result = _hashedCollection.TryInsert(position, new KeyValuePair<TKey, TValue>(key, value));
+            if (result) NotifyObserversOfChange();
+            return result;
+        }
+
         private bool TryRemoveWithNotification(TKey key, out TValue value)
         {
             bool result = _hashedCollection.Remove(key, out value);
@@ -152,6 +159,10 @@ namespace System.Collections.ObjectModel
         }
 
         #endregion
+        public void Insert(int position, TKey key, TValue value)
+        {
+            TryInsertWithNotification(position, key, value);
+        }
 
         public void Clear()
         {

@@ -36,7 +36,7 @@
         </Grid.RowDefinitions>
 
         <ListView x:Name="MessageList"
-                  ItemsSource="{x:Bind ViewModel.Source, Mode=OneWay}" Padding="0,0,0,16"
+                  ItemsSource="{x:Bind ViewModel.Source.Values, Mode=OneWay}" Padding="0,0,0,16"
                   ItemTemplateSelector="{StaticResource MessageTemplateSelector}"
                   SelectionMode="None" IsItemClickEnabled="False" ItemContainerStyle="{StaticResource MessageListItemStyle}">
             <ListView.ItemsPanel>
